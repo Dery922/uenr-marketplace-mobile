@@ -16,26 +16,32 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { useSelector } from 'react-redux';
 const ProfileEditScreen = () => {
   // Get user data passed from Profile Screen (with defaults)
   const params = useLocalSearchParams();
-  const currentUser = {
-    name: params.name || 'Kwame Asare',
-    email: params.email || 'kwame@student.edu.gh',
-    phone: params.phone || '+233 24 123 4567',
-    university: params.university || 'University of Ghana',
-    campus: params.campus || 'Legon Campus',
-    studentId: params.studentId || 'STU2023001',
-  };
+const { user: currentUser, token } = useSelector((state) => state.auth);
 
-  // State for editable fields
-  const [formData, setFormData] = useState(currentUser);
-  const [profileImage, setProfileImage] = useState(
-    params.profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80'
-  );
+
+
+
   const [isSaving, setIsSaving] = useState(false);
   const insets = useSafeAreaInsets();
+
+  const [formData, setFormData] = useState({
+  name: currentUser?.name || '',
+  email: currentUser?.email || '',
+  phone: currentUser?.phoneNumber || '',
+  university: currentUser?.university || '',
+  campus: currentUser?.campus || '',
+  studentId: currentUser?.studentID || '',
+});
+console.log(formData)
+const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80'
+
+const [profileImage, setProfileImage] = useState(
+  currentUser?.avatarUrl || DEFAULT_IMAGE
+);
 
   // Handle text input changes
   const handleInputChange = (field, value) => {
@@ -139,11 +145,17 @@ const ProfileEditScreen = () => {
   // Input Fields Configuration
   const inputFields = [
     { label: 'Full Name', field: 'name', placeholder: 'Enter your full name', icon: 'person' },
-    { label: 'Email Address', field: 'email', placeholder: 'Enter your email', icon: 'mail', keyboardType: 'email-address' },
+    { label: 'Email Address',editable: false , field: 'email', placeholder: 'Enter your email', icon: 'mail', keyboardType: 'email-address' },
     { label: 'Phone Number', field: 'phone', placeholder: 'Enter your phone number', icon: 'call', keyboardType: 'phone-pad' },
-    { label: 'University', field: 'university', placeholder: 'Enter your university', icon: 'school' },
-    { label: 'Campus', field: 'campus', placeholder: 'Enter your campus', icon: 'location' },
-    { label: 'Student ID', field: 'studentId', placeholder: 'Enter your student ID', icon: 'card' },
+   // { label: 'University', field: 'university', placeholder: 'Enter your university', icon: 'school' },
+   // { label: 'Campus', field: 'campus', placeholder: 'Enter your campus', icon: 'location' },
+      { 
+    label: 'Student ID', 
+    field: 'studentId', 
+    placeholder: 'Enter your student ID', 
+    icon: 'card',
+    editable: false 
+  },
   ];
 
   return (
@@ -151,7 +163,7 @@ const ProfileEditScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1A365D" />
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <TouchableOpacity 
@@ -178,7 +190,14 @@ const ProfileEditScreen = () => {
           {/* Profile Image Section */}
           <View style={styles.imageSection}>
             <View style={styles.imageWrapper}>
-              <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                   <Image
+                                  style={styles.profileImage}
+                                  source={
+                                    currentUser?.avatar
+                                      ? { uri: currentUser.avatar }
+                                      : require("../assets/images/avatar.png")
+                                  }
+                                />
               <TouchableOpacity 
                 style={styles.imageEditButton}
                 onPress={() => {
@@ -207,15 +226,22 @@ const ProfileEditScreen = () => {
                   <Ionicons name={item.icon} size={18} color="#4A5568" style={styles.fieldIcon} />
                   <Text style={styles.label}>{item.label}</Text>
                 </View>
-                <TextInput
-                  style={styles.input}
-                  value={formData[item.field]}
-                  onChangeText={(text) => handleInputChange(item.field, text)}
-                  placeholder={item.placeholder}
-                  placeholderTextColor="#A0AEC0"
-                  keyboardType={item.keyboardType || 'default'}
-                  autoCapitalize={item.field === 'email' ? 'none' : 'words'}
-                />
+       <TextInput
+  style={[
+    styles.input,
+    item.editable === false && {
+      backgroundColor: '#EDF2F7',
+      color: '#A0AEC0'
+    }
+          ]}
+          value={formData[item.field]}
+          onChangeText={(text) => handleInputChange(item.field, text)}
+          placeholder={item.placeholder}
+          placeholderTextColor="#A0AEC0"
+          keyboardType={item.keyboardType || 'default'}
+          autoCapitalize={item.field === 'email' ? 'none' : 'words'}
+          editable={item.editable !== false} // 👈 THIS is what makes it work
+        />
               </View>
             ))}
 
@@ -266,20 +292,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#00BFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
   backButton: {
     padding: 8,
+    alignItems:'center',
+    justifyContent:'center',
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A365D',
+    color: '#fff',
   },
   saveButton: {
-    backgroundColor: '#00BFFF',
+     backgroundColor: "rgba(255, 255, 255, 0.2)",
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,

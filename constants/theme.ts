@@ -45,13 +45,11 @@ export const lightTheme = {
 };
 
 export const darkTheme = {
-  background: '#0F172A',
-  card: '#1E293B',
-  text: '#F1F5F9',
-  subText: '#94A3B8',
-  border: '#334155',
-  primary: '#00BFFF',
-  icon: '#CBD5F5',
+  background: '#0B1120',   // deeper dark
+  card: '#111827',         // card surfaces
+  text: '#F9FAFB',
+  subText: '#9CA3AF',
+  border: '#1F2937',
+  primary: '#38BDF8',      // softer blue
+  icon: '#D1D5DB',
 };
-
-

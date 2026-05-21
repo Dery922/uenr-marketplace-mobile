@@ -1,118 +1,199 @@
 // app/(tabs)/messages.js
-import { fetchConversations } from "@/store/slices/chatSlice";
+import { deleteConversation, fetchConversations } from "@/store/slices/chatSlice";
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Image,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Swipeable } from "react-native-gesture-handler";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 export default function MessagesInboxScreen() {
   const dispatch = useDispatch();
-  // Mock conversation data
-  const { conversations } = useSelector((state: RootState) => state.chat);
-  // const conversations = [
-  //   {
-  //     id: '1',
-  //     sellerName: 'Kwame (Final Year)',
-  //     lastMessage: 'Yes, it\'s still available!',
-  //     productTitle: 'Calculus 101 Textbook',
-  //     productImage: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80',
-  //     time: '10:31 AM',
-  //     unreadCount: 2,
-  //   },
-  //   {
-  //     id: '2',
-  //     sellerName: 'Nana (Engineering)',
-  //     lastMessage: 'The calculator is like new.',
-  //     productTitle: 'Casio Scientific Calculator',
-  //     productImage: 'https://images.unsplash.com/photo-1587145742593-21c33361c4e0?w=400&q=80',
-  //     time: 'Yesterday',
-  //     unreadCount: 0,
-  //   },
-  //   // Add more conversations...
-  // ];
+  const { conversations, loading, unreadCount } = useSelector((state: RootState) => state.chat);
+  const [refreshing, setRefreshing] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const { user } = useSelector((state) => state.auth);
 
-
+  // Debug: Log unread counts
   useEffect(() => {
-  console.log("Conversations:", JSON.stringify(conversations, null, 2));
-}, [conversations]);
+    console.log("Conversations with unread counts:", 
+      conversations.map(c => ({ 
+        id: c._id, 
+        unreadCount: c.unreadCount,
+        lastMessage: c.lastMessageText 
+      }))
+    );
+  }, [conversations]);
 
+  useFocusEffect(
+    useCallback(() => {
+      //dispatch(fetchConversations());
+      // Also fetch unread counts separately if needed
+      dispatch(fetchConversations());
+    //dispatch(fetchUnreadCounts());
+    }, [dispatch])
+  );
 
-useFocusEffect(
-  useCallback(() => {
-    dispatch(fetchConversations());
-  }, [])
-);
- 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await dispatch(fetchConversations());
+    setRefreshing(false);
+  }, [dispatch]);
+
+  const renderRightActions = (conversationId) => {
+    const isDeleting = deletingId === conversationId;
+    
+    return (
+      <TouchableOpacity
+        style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
+        onPress={() => handleDelete(conversationId)}
+        disabled={isDeleting}
+      >
+        {isDeleting ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="trash" size={24} color="#fff" />
+            <Text style={styles.deleteText}>Delete</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+const handleDelete = async (conversationId) => {
+  setDeletingId(conversationId);
+
+  try {
+    await dispatch(deleteConversation(conversationId)).unwrap();
+    dispatch(fetchConversations()); // refresh from backend
+  } catch (error) {
+    console.log("Delete failed:", error);
+  } finally {
+    setDeletingId(null);
+  }
+};
+
   const navigateToChat = (conversation) => {
+    // Mark as read will happen when entering the chat
     router.push({
       pathname: `/chat/${conversation._id}`,
       params: {
         sellerName: conversation.sellerName,
         productTitle: conversation.productTitle,
         productImage: conversation.productImage,
-        productPrice: '₵120', // You would fetch this from your data
+        productPrice: conversation.productPrice || '₵0',
       },
     });
   };
 
-const renderConversation = ({ item }) => {
+  const renderConversation = ({ item }) => {
+    const hasUnread = item.unreadCount > 0;
+    
+    return (
+      <Swipeable renderRightActions={() => renderRightActions(item._id)}>
+        <TouchableOpacity
+          style={[
+            styles.conversationItem,
+            hasUnread && styles.conversationItemUnread // Blue background for unread
+          ]}
+          onPress={() => navigateToChat(item)}
+          activeOpacity={0.7}
+        >
+          <Image
+            source={{ uri: item.productImage || "https://via.placeholder.com/60" }}
+            style={styles.productImage}
+          />
 
-  const seller = item.participants?.find(
-  (p) => p._id !== user._id
-);
-  return (
-    <TouchableOpacity
-      style={styles.conversationItem}
-      onPress={() => navigateToChat(item)}
-      activeOpacity={0.7}
-    >
-      <Image
-        source={{ uri: item.product?.images?.[0] }}
-        style={styles.productImage}
-      />
+          <View style={styles.conversationInfo}>
+            <View style={styles.conversationHeader}>
+              <Text style={[
+                styles.sellerName,
+                hasUnread && styles.sellerNameUnread // Bold for unread
+              ]}>
+                {item.sellerName || "User"}
+              </Text>
 
-      <View style={styles.conversationInfo}>
-        <View style={styles.conversationHeader}>
-          <Text style={styles.sellerName}>
-            {seller?.name || "User"}
-          </Text>
+              <Text style={[
+                styles.messageTime,
+                hasUnread && styles.messageTimeUnread
+              ]}>
+                {new Date(item.lastMessageTime).toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </Text>
+            </View>
 
-          <Text style={styles.messageTime}>
-            {new Date(item.updatedAt).toLocaleTimeString()}
-          </Text>
+            <Text style={[
+              styles.productTitle,
+              hasUnread && styles.productTitleUnread
+            ]} numberOfLines={1}>
+              {item.productTitle || "Product"}
+            </Text>
+
+            <View style={styles.messageRow}>
+              <Text style={[
+                styles.lastMessage,
+                hasUnread && styles.lastMessageUnread // Bold/different color for unread
+              ]} numberOfLines={1}>
+                {item.lastMessageText || "Start chatting"}
+              </Text>
+              
+              {/* Unread Badge */}
+              {hasUnread && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
+
+  if (loading && conversations?.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Messages</Text>
+          <TouchableOpacity style={styles.newChatButton}>
+            <Ionicons name="add" size={24} color="#00BFFF" />
+          </TouchableOpacity>
         </View>
-
-        <Text style={styles.productTitle} numberOfLines={1}>
-          {item.product?.title}
-        </Text>
-
-        <Text style={styles.lastMessage} numberOfLines={1}>
-          Start chatting
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-};
+        
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00BFFF" />
+          <Text style={styles.loadingText}>Loading messages...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton} 
+          style={styles.backBtn} 
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={24} color="#1A365D" />
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Messages</Text>
         <TouchableOpacity style={styles.newChatButton}>
@@ -120,14 +201,20 @@ const renderConversation = ({ item }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Conversations List */}
       <FlatList
-        
         data={conversations || []}
         renderItem={renderConversation}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#00BFFF']}
+            tintColor="#00BFFF"
+          />
+        }
       />
     </SafeAreaView>
   );
@@ -142,20 +229,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#00BFFF',
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  backButton: {
+  backBtn: {
+    width: 40,
+    height: 40,
     padding: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A365D',
+    color: '#fff',
   },
   newChatButton: {
     padding: 8,
@@ -173,6 +266,12 @@ const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
     alignItems: 'center',
   },
+  // NEW: Unread conversation style (light blue background)
+  conversationItemUnread: {
+    backgroundColor: '#EBF8FF', // Light blue background like WhatsApp
+    borderColor: '#00BFFF',
+    borderWidth: 1,
+  },
   productImage: {
     width: 60,
     height: 60,
@@ -189,21 +288,65 @@ const styles = StyleSheet.create({
   },
   sellerName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
+    color: '#718096',
+  },
+  // NEW: Bold name for unread
+  sellerNameUnread: {
+    fontWeight: '700',
     color: '#1A365D',
   },
   messageTime: {
     fontSize: 12,
     color: '#718096',
   },
+  // NEW: Darker time for unread
+  messageTimeUnread: {
+    color: '#2D3748',
+    fontWeight: '500',
+  },
   productTitle: {
     fontSize: 14,
-    color: '#4A5568',
+    color: '#718096',
     marginBottom: 2,
+  },
+  // NEW: Darker product title for unread
+  productTitleUnread: {
+    color: '#2D3748',
+    fontWeight: '500',
+  },
+  messageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   lastMessage: {
     fontSize: 14,
-    color: '#718096',
+    color: '#A0AEC0',
+    flex: 1,
+    marginRight: 8,
+  },
+  // NEW: Bold and darker for unread message
+  lastMessageUnread: {
+    color: '#2D3748',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 90,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  deleteText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  deleteButtonDisabled: {
+    backgroundColor: '#FCA5A5',
+    opacity: 0.7,
   },
   unreadBadge: {
     backgroundColor: '#00BFFF',
@@ -212,11 +355,22 @@ const styles = StyleSheet.create({
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    paddingHorizontal: 6,
   },
   unreadBadgeText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#718096',
   },
 });

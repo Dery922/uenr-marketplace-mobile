@@ -1,15 +1,11 @@
-
 import CustomButton from "@/components/CustomButton";
 import { Ionicons } from "@expo/vector-icons";
 import Checkbox from "expo-checkbox";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
-
 import { loginUser } from "@/store/slices/authSlice";
-
 import { AppDispatch, RootState } from "@/store/store";
-
 
 import {
   KeyboardAvoidingView,
@@ -22,56 +18,59 @@ import {
   View,
   useWindowDimensions
 } from "react-native";
+
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import { useDispatch, useSelector } from "react-redux";
 
-
-
-
 export default function SigninScreen() {
-
-    const { loading, error, user } = useSelector((state: RootState) => state.auth);
+  const { loading, error } = useSelector((state: RootState) => state.auth);
 
   const dispatch = useDispatch<AppDispatch>();
   const { width, height } = useWindowDimensions();
   const router = useRouter();
-  const [email, setEmail] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [checked, setChecked] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
-  // const [loading, setLoading] = useState(false)
-
-
-      type LoginErrors = {
-      email?: string[];
-      password?: string[];
-    };
-  const [errors, setErrors] = useState<LoginErrors>({});
-  
+  const [localError, setLocalError] = useState("");
 
 
   const handleLogin = async () => {
+    setLocalError("");
+
+    if (!email || !password) {
+      setLocalError("Please enter both email and password");
+      return;
+    }
+
     const resultAction = await dispatch(loginUser({ email, password }));
+
     if (loginUser.fulfilled.match(resultAction)) {
-      router.replace("/(tabs)");
+        router.replace("/(drawer)/(tabs)/home");
     } else {
-      alert(resultAction.payload || "Login failed");
+      const message =
+        resultAction.payload || "Invalid email or password";
+      setLocalError(message);
     }
   };
 
+  const isDisabled = !email || !password || loading;
+  const insets = useSafeAreaInsets();
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, {paddingTop:insets.top}]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       {/* Background */}
       <View style={[styles.topSection, { height: height * 0.7 }]} />
-      <View style={[styles.box, {height: height * 0.3,}]} />
+      <View style={[styles.box, { height: height * 0.3 }]} />
 
       {/* SVG Curve */}
-      <View style={[styles.svgProtector,  {top: height * 0.7 - 75}]}>
+      <View style={[styles.svgProtector, { top: height * 0.7 - 75 }]}>
         <Svg
           height={150}
           width={width}
@@ -85,39 +84,32 @@ export default function SigninScreen() {
         </Svg>
       </View>
 
-      {/* Content - NO nested KeyboardAvoidingView */}
+      {/* Content */}
       <View style={styles.contentArea}>
-        {/* ScrollView to handle keyboard properly */}
-        <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContentContainer}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        keyboardShouldPersistTaps="handled">
-          <View style={[styles.topContent,{paddingTop: height * 0.25}]}>
-
-
+        <ScrollView
+          style={styles.scrollContent}
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.topContent, { paddingTop: height * 0.25 }]}>
+            {/* Email */}
             <Text style={styles.label}>Email</Text>
-
             <TextInput
               placeholder="Enter your email"
-              style={[
-                styles.input,
-                errors.email && styles.inputError
-              ]}
+              style={styles.input}
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
-                setErrors((prev) => ({ ...prev, email: undefined }));
+                setLocalError("");
               }}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholderTextColor="#94A3B8"
             />
 
-          {errors.email && (
-            <Text style={styles.errorText}>
-              {errors.email[0]}
-            </Text>
-          )}
-
-           
-    
+            {/* Password */}
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordWrapper}>
               <TextInput
@@ -125,14 +117,14 @@ export default function SigninScreen() {
                 style={styles.passwordInput}
                 value={password}
                 onChangeText={(text) => {
-                setPassword(text);
-                setErrors((prev) => ({ ...prev, password: undefined }));
-              }}
+                  setPassword(text);
+                  setLocalError("");
+                }}
                 secureTextEntry={!passwordVisible}
                 autoCapitalize="none"
-                placeholderTextColor="##1E3A8A"
+                placeholderTextColor="#94A3B8"
               />
-    
+
               <TouchableOpacity
                 onPress={() => setPasswordVisible(!passwordVisible)}
                 style={styles.eyeButton}
@@ -140,17 +132,19 @@ export default function SigninScreen() {
                 <Ionicons
                   name={passwordVisible ? "eye" : "eye-off"}
                   size={22}
-                  color="#1E3A8A"
+                  color="#3B82F6"
                 />
               </TouchableOpacity>
-              
             </View>
-              {errors.password && (
-               <Text style={styles.errorText}>
-               {errors.password[0]}
-                </Text>
-               )}
 
+            {/* Error Message */}
+            {(localError || error) && (
+              <Text style={styles.errorText}>
+                {localError || error}
+              </Text>
+            )}
+
+            {/* Options */}
             <View style={styles.checkedRow}>
               <View style={styles.checkedStyle}>
                 <Checkbox
@@ -158,30 +152,38 @@ export default function SigninScreen() {
                   onValueChange={setChecked}
                   color={checked ? "#1E3A8A" : undefined}
                 />
-                <Text style={{ color: "#fff" }}>Remember me</Text>
+                <Text style={{ color: "#000" }}>Remember me</Text>
               </View>
+
               <TouchableOpacity
                 onPress={() => router.push("/(auth)/ForgotPassword")}
               >
-                <Text style={{ color: "#fff" }}>Forgot Password?</Text>
+                <Text style={{ color: "#000" }}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
 
+            {/* Button */}
             <CustomButton
-              title="Sign in"
+              title={loading ? "Signing in..." : "Sign in"}
               onPress={handleLogin}
               loading={loading}
-              disabled={!email || !password || loading}
-              style={styles.signupButtons}
+              disabled={isDisabled}
+              style={[
+                styles.signupButtons,
+                isDisabled && { opacity: 0.5 }
+              ]}
               textStyle={styles.signupButtonText}
             />
           </View>
 
-          {/* Bottom content - Now part of the scrollable area */}
+          {/* Bottom */}
           <View style={styles.bottomContent}>
             <View style={styles.bottomContainer}>
-              <Text style={styles.bottomText}>Don't have an account?</Text>
+              <Text style={styles.bottomText}>
+                Don't have an account?
+              </Text>
             </View>
+
             <CustomButton
               title="Sign up with email"
               onPress={() => router.push("/(auth)/SignupScreen")}
@@ -196,17 +198,14 @@ export default function SigninScreen() {
 }
 
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
     backgroundColor: "#E2E8F0",
   },
   topSection: {
-   
     backgroundColor: "#00BFFF",
   },
   box: {
-   
     backgroundColor: "#E2E8F0",
     position: "absolute",
     bottom: 0,
@@ -215,7 +214,6 @@ const styles = StyleSheet.create({
   },
   svgProtector: {
     position: "absolute",
-  
     left: 0,
     right: 0,
     height: 150,
@@ -225,35 +223,29 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 20,
   },
-  // ✅ FIXED: Removed justifyContent from here
   scrollContent: {
     flex: 1,
-    paddingBottom: Platform.OS === "ios" ? 20 : 0,
   },
-  // ✅ This is correct - keep as is
   scrollContentContainer: {
     flexGrow: 1,
-    justifyContent: 'space-between',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    justifyContent: "space-between",
   },
   topContent: {
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  // ... rest of your styles remain the same
-
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#fff",
+    color: "#000",
     marginBottom: 6,
     marginTop: 12,
   },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderWidth: 1,
-    borderRadius: 6,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 8,
+    borderColor: "#E2E8F0",
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
@@ -262,12 +254,11 @@ const styles = StyleSheet.create({
   passwordWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 6,
+    borderColor: "#E2E8F0",
+    borderRadius: 8,
     paddingHorizontal: 12,
-
   },
   passwordInput: {
     flex: 1,
@@ -277,25 +268,26 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     paddingHorizontal: 10,
-    justifyContent: "center",
-    alignItems: "center",
+  },
+  errorText: {
+    color: "#EF4444",
+    marginTop: 10,
+    fontSize: 14,
+    fontWeight: "500",
   },
   checkedRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 14,
-    paddingHorizontal: 4,
   },
   checkedStyle: {
     flexDirection: "row",
-    gap: 4,
-    color: "#fff",
+    gap: 6,
   },
   signupButtons: {
     backgroundColor: "#fff",
-    color: "#000",
-    borderRadius: 6,
+    borderRadius: 8,
     paddingVertical: 16,
     width: "100%",
     marginTop: 18,
@@ -312,7 +304,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   bottomContainer: {
-    justifyContent: "center",
     alignItems: "center",
     marginTop: 15,
   },
@@ -320,17 +311,16 @@ const styles = StyleSheet.create({
     color: "#1E293B",
   },
   signupButton: {
-    backgroundColor: "#00004d",
-    borderRadius: 6,
+    backgroundColor: "#3B82F6",
+    borderRadius: 12,
     paddingVertical: 16,
-    width: "100%",
-    marginTop: 28,
+    marginTop: 24,
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-//   scrollContentContainer: {
-//   flexGrow: 1,
-//   justifyContent: 'space-between',
-//   paddingBottom: Platform.OS === 'ios' ? 20 : 0,
-// },
   signupButtonTexts: {
     color: "#fff",
     fontSize: 16,

@@ -1,259 +1,231 @@
 import CustomButton from "@/components/CustomButton";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function LandingScreen() {
-  const campusLogoSource = require("../../assets/images/campusLogo.png");
+  const campusLogoSource = require("../../assets/images/logo.png");
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
+  const insets = useSafeAreaInsets();
+  const dynamicGap = SCREEN_HEIGHT * 0.05;
+  const texts = [
+    "Skip the printing lines",
+    "Turn your items into cash",
+    "Negotiate in real-time",
+    "Find your perfect hostel",
+  ];
 
-  //create animated values for each word
-  const tabAnim = useRef(new Animated.Value(0)).current;
-  const tradeAnim = useRef(new Animated.Value(0)).current;
-  const goAnim = useRef(new Animated.Value(0)).current;
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    const startAnimationLoop = () => {
-      // Reset all animations to start
-      tabAnim.setValue(0);
-      tradeAnim.setValue(0);
-      goAnim.setValue(0);
-
-      Animated.sequence([
-        // Animate "Tab"
-        Animated.timing(tabAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        // Wait a bit, then animate "Trade"
-        Animated.delay(200),
-        Animated.timing(tradeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        // Wait a bit, then animate "Go"
-        Animated.delay(200),
-        Animated.timing(goAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        // Hold all words visible for a moment
-        Animated.delay(1500),
-        // Fade out all words together
-        Animated.parallel([
-          Animated.timing(tabAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(tradeAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(goAnim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]),
-        // Pause before restarting
-        Animated.delay(500),
-      ]).start(() => {
-        // Loop the animation
-        startAnimationLoop();
-      });
-    };
-
-    startAnimationLoop();
-
-    // Cleanup animation on unmount
-    return () => {
-      tabAnim.stopAnimation();
-      tradeAnim.stopAnimation();
-      goAnim.stopAnimation();
-    };
+    animateText();
+    const interval = setInterval(() => changeText(), 3000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Interpolate animations for scale and opacity
-  const tabStyle = {
-    opacity: tabAnim,
-    transform: [
-      {
-        scale: tabAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.7, 1],
-        }),
-      },
-      {
-        translateY: tabAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [10, 0], // Moves from bottom to original position
-        }),
-      },
-    ],
+  const animateText = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
-  const tradeStyle = {
-    opacity: tradeAnim,
-    transform: [
-      {
-        scale: tradeAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.7, 1],
-        }),
-      },
-      {
-        translateY: tradeAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [10, 0],
-        }),
-      },
-    ],
-  };
-
-  const goStyle = {
-    opacity: goAnim,
-    transform: [
-      {
-        scale: goAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.7, 1],
-        }),
-      },
-      {
-        translateY: goAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [10, 0],
-        }),
-      },
-    ],
+  const changeText = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: -20,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setCurrentIndex((prev) => (prev + 1) % texts.length);
+      translateY.setValue(20);
+      animateText();
+    });
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: Math.max(insets.bottom + 20, dynamicGap) },
+      ]}
+    >
       <View style={styles.innerContainer}>
+        {/* 🔷 TOP SECTION */}
         <View style={styles.topSection}>
-          <View style={styles.logoContainer}>
-            <Image style={styles.logo} source={campusLogoSource} />
-            <View style={styles.textContainer}>
-              <Animated.Text style={styles.appName}>UENR</Animated.Text>
-              <Animated.Text style={styles.appName}>MARKETPLACE</Animated.Text>
-              <View>
-                <Animated.Text style={[styles.sloganWord, tabStyle]}>
-                  Tab •
-                </Animated.Text>
-                {/* <Text style={styles.sloganDot}> • </Text> */}
-                <Animated.Text style={[styles.sloganWord, tradeStyle]}>
-                  Trade •
-                </Animated.Text>
-                {/* <Text style={styles.sloganDot}> • </Text> */}
-                <Animated.Text style={[styles.sloganWord, goStyle]}>
-                  Go •
-                </Animated.Text>
-              </View>
-            </View>
+          <Image
+            style={styles.logo}
+            source={campusLogoSource}
+            contentFit="contain"
+          />
+          <Text style={styles.heroTitle}>Marketplace</Text>
+          <Text style={styles.heroSubtitle}>
+            The all-in-one marketplace built specifically for your campus life.
+          </Text>
+
+          <View style={styles.animatedContainer}>
+            <Ionicons name="sparkles" size={16} color="#00BFFF" />
+            <Animated.Text
+              style={[
+                styles.animatedText,
+                { opacity: fadeAnim, transform: [{ translateY }] },
+              ]}
+            >
+              {texts[currentIndex]}
+            </Animated.Text>
           </View>
         </View>
-        <View style={styles.middle}></View>
 
-        <View style={styles.bottomContainer}>
-          <View style={styles.bottom2}>
-            <Text>Don't have an account yet?</Text>
-          </View>
-
-          <View>
-            <CustomButton
-              title="Sign in with email"
-              onPress={() => router.push("/(auth)/SignupScreen")}
-              style={{ backgroundColor: "#0A192F" }}
+        {/* 🔷 MODERN FEATURES GRID */}
+        <View style={styles.middleSection}>
+          <View style={styles.featureGrid}>
+            <FeatureItem
+              icon="print"
+              label="Printing"
+              color="#E0F7FA"
+              iconColor="#00BFFF"
+            />
+            <FeatureItem
+              icon="cart"
+              label="Shop"
+              color="#F3E5F5"
+              iconColor="#9C27B0"
+            />
+            <FeatureItem
+              icon="chatbubbles"
+              label="Chat"
+              color="#E8F5E9"
+              iconColor="#4CAF50"
+            />
+            <FeatureItem
+              icon="business"
+              label="Hostels"
+              color="#FFF3E0"
+              iconColor="#FF9800"
             />
           </View>
-          <View style={styles.bottom2}>
-            <Text>Already a member? </Text>
-            <Text>Login</Text>
-          </View>
+        </View>
+
+        {/* 🔷 BOTTOM SECTION */}
+        <View style={styles.bottomSection}>
+          <CustomButton
+            title="Create account"
+            onPress={() => router.push("/(auth)/SignupScreen")}
+            style={styles.ctaButton}
+          />
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => router.push("/(auth)/SigninScreen")}
+          >
+            <Text style={styles.loginText}>
+              Already a member? <Text style={styles.loginLink}>Sign In</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 }
 
+// Helper Component for Features
+const FeatureItem = ({ icon, label, color, iconColor }) => (
+  <View style={styles.featureItem}>
+    <View style={[styles.iconCircle, { backgroundColor: color }]}>
+      <Ionicons name={icon} size={24} iconColor={iconColor} color={iconColor} />
+    </View>
+    <Text style={styles.featureLabel}>{label}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5feff",
-  },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   innerContainer: {
     flex: 1,
-    margin: 14,
+    paddingHorizontal: 30,
+    justifyContent: "space-between",
   },
-  topSection: {
-    flex: 20,
-    margin: 25,
+  topSection: { marginTop: 40, alignItems: "center" },
+  logo: { width: 120, height: 120, marginBottom: 20 },
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#1A1A1A",
+    textAlign: "center",
   },
-  topSection2: {
-    margin: 8,
-  },
-  appName: {
-    fontSize: 28,
-    fontWeight: "800", // "900" might be too heavy on some devices
-    color: "#666",
-    letterSpacing: 0.5,
-  },
-  bottom1: {},
-
-  sloganWord: {
+  heroSubtitle: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#4A90E2", // Blue color, change as needed
-  },
-
-  sloganDot: {
-    fontSize: 16,
-    fontWeight: "600",
     color: "#666",
-    marginHorizontal: 4,
+    textAlign: "center",
+    marginTop: 10,
+    lineHeight: 24,
   },
-  logo: {
-    width: 48,
-    height: 48,
-    resizeMode: "contain", // Ensures logo scales properly
+  animatedContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 25,
+    gap: 8,
   },
-  logoContainer: {
-    flexDirection: "column",
-    alignItems: "flex-start",
-    justifyContent: "flex-start",
-    gap: 3,
-    paddingVertical: 20,
+  animatedText: { fontSize: 15, color: "#00BFFF", fontWeight: "700" },
+  middleSection: { marginVertical: 30 },
+  featureGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 15,
   },
-
-  tagLine: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#666",
-    marginTop: 4,
-    letterSpacing: 1,
+  featureItem: {
+    width: "47%",
+    backgroundColor: "#F8FAFC",
+    padding: 20,
+    borderRadius: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
   },
-  textContainer: {
-    flexDirection: "column",
-  },
-  middle: {
-    flex: 60,
-  },
-  bottomContainer: {
-    flex: 20,
-    flexDirection: "column",
-    marginBottom: 19,
-  },
-  bottom2: {
-    flexDirection:  "row",
+  iconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 12,
   },
-
-  // Animation styles part
+  featureLabel: { fontSize: 14, fontWeight: "600", color: "#333" },
+  bottomSection: { marginBottom: 40 },
+  ctaButton: {
+    backgroundColor: "#3B82F6",
+    height: 58,
+    borderRadius: 18,
+    elevation: 0,
+  },
+  secondaryBtn: { marginTop: 20, alignItems: "center" },
+  loginText: { color: "#666", fontSize: 15 },
+  loginLink: { color: "#00BFFF", fontWeight: "700" },
 });

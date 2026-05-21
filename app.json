@@ -4,7 +4,7 @@
     "slug": "campus-media",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "campusmedia",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

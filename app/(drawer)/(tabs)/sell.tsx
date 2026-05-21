@@ -1,11 +1,12 @@
 // screens/SellScreen.js
-import { addProduct } from '@/api/productApi';
-import SelectableChips from '@/components/SelectableChips';
-import { Ionicons } from '@expo/vector-icons';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import * as ImagePicker from 'expo-image-picker';
+import { addProduct, getAllProducts } from "@/api/productApi";
+import SelectableChips from "@/components/SelectableChips";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,50 +14,59 @@ import {
   Dimensions,
   Easing,
   Image,
+  KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
+const CAMPUS_STORAGE_KEY = "selected_campus_location";
 
 const SellScreen = () => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [discountPrice, setDiscountPrice] = useState('');
-  const [category, setCategory] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [discountPrice, setDiscountPrice] = useState("");
+  const [category, setCategory] = useState("");
+  const [campus, setCampus] = useState("");
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [condition, setCondition] = useState('new');
+  const [condition, setCondition] = useState("new");
 
-  
   // Animation refs
   const slideAnim = useRef(new Animated.Value(1000)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
-  const imageScaleAnims = useRef(Array(4).fill().map(() => new Animated.Value(0))).current;
+  const imageScaleAnims = useRef(
+    Array(4)
+      .fill()
+      .map(() => new Animated.Value(0)),
+  ).current;
   const hasAnimated = useRef(false);
 
-
-    const conditionOptions = [
-    { label: 'Brand New', value: 'brand_new' },
-    { label: 'Like New', value: 'like_new' },
-    { label: 'Used', value: 'used' },
-    { label: 'Refurbished', value: 'refurbished' },
+  const conditionOptions = [
+    { label: "Brand New", value: "brand_new" },
+    { label: "Like New", value: "like_new" },
+    { label: "Used", value: "used" },
+    { label: "Refurbished", value: "refurbished" },
   ];
 
   const categories = [
-    { id: 'books', name: 'Books', icon: 'book' },
-    { id: 'electronics', name: 'Electronics', icon: 'laptop' },
-    { id: 'clothing', name: 'Clothing', icon: 'shirt' },
-    { id: 'accessories', name: 'Accessories', icon: 'bag' },
-    { id: 'other', name: 'Other', icon: 'apps' },
+    { id: "books", name: "Books", icon: "book" },
+    { id: "electronics", name: "Electronics", icon: "laptop" },
+    { id: "clothing", name: "Clothing", icon: "shirt" },
+    { id: "accessories", name: "Accessories", icon: "bag" },
+    { id: "other", name: "Other", icon: "apps" },
   ];
 
   // Reset animations when screen comes into focus
@@ -66,11 +76,11 @@ const SellScreen = () => {
       slideAnim.setValue(1000);
       fadeAnim.setValue(0);
       scaleAnim.setValue(0.9);
-      imageScaleAnims.forEach(anim => anim.setValue(0));
-      
+      imageScaleAnims.forEach((anim) => anim.setValue(0));
+
       setIsVisible(true);
       startAnimations();
-      
+
       return () => {
         setIsVisible(false);
         // Reset animation ref
@@ -80,16 +90,31 @@ const SellScreen = () => {
         fadeAnim.stopAnimation();
         scaleAnim.stopAnimation();
       };
-    }, [])
+    }, []),
   );
 
-    const insets = useSafeAreaInsets();
-    const tabBarHeight = useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+
+  useEffect(() => {
+    const loadSelectedCampus = async () => {
+      try {
+        const savedCampus = await AsyncStorage.getItem(CAMPUS_STORAGE_KEY);
+        if (savedCampus) {
+          setCampus(savedCampus);
+        }
+      } catch (error) {
+        console.log("Failed to load campus location", error);
+      }
+    };
+
+    loadSelectedCampus();
+  }, []);
 
   const startAnimations = () => {
     if (hasAnimated.current) return;
     hasAnimated.current = true;
-    
+
     // Slide up animation for bottom section
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -98,7 +123,7 @@ const SellScreen = () => {
         easing: Easing.out(Easing.back(1.2)),
         useNativeDriver: true,
       }),
-      
+
       // Fade in animation for content
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -106,7 +131,7 @@ const SellScreen = () => {
         delay: 200,
         useNativeDriver: true,
       }),
-      
+
       // Scale animation for main content
       Animated.spring(scaleAnim, {
         toValue: 1,
@@ -119,15 +144,18 @@ const SellScreen = () => {
 
     // Staggered animation for category buttons with delay
     setTimeout(() => {
-      Animated.stagger(80, categories.map((_, index) => 
-        Animated.spring(imageScaleAnims[index] || new Animated.Value(0), {
-          toValue: 1,
-          tension: 150,
-          friction: 10,
-          useNativeDriver: true,
-          delay: index * 40,
-        })
-      )).start();
+      Animated.stagger(
+        80,
+        categories.map((_, index) =>
+          Animated.spring(imageScaleAnims[index] || new Animated.Value(0), {
+            toValue: 1,
+            tension: 150,
+            friction: 10,
+            useNativeDriver: true,
+            delay: index * 40,
+          }),
+        ),
+      ).start();
     }, 300);
   };
 
@@ -197,7 +225,7 @@ const SellScreen = () => {
     // Stop current animations
     slideAnim.stopAnimation();
     fadeAnim.stopAnimation();
-    
+
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: 1000,
@@ -218,17 +246,25 @@ const SellScreen = () => {
 
   useEffect(() => {
     (async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission required', 'Please enable camera roll permissions to upload photos.');
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Toast.show({
+          type: "info",
+          text1: "Permission required",
+          text2: "Please enable camera roll permissions to upload photos.",
+        });
       }
     })();
   }, []);
 
   const pickImage = async () => {
     if (images.length >= 4) {
-      Alert.alert('Limit reached', 'You can upload up to 4 images.');
-      return;
+      return Toast.show({
+        type: "error",
+        text1: "Limit reach",
+        text2: "You can upload up to 4 images",
+      });
     }
 
     try {
@@ -246,7 +282,11 @@ const SellScreen = () => {
         animateImageAdd(newImages.length - 1);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image.');
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to pick image.",
+      });
     }
   };
 
@@ -259,106 +299,141 @@ const SellScreen = () => {
   };
 
   const handleSubmit = async () => {
-      console.log("Submitting product...");
     if (!title.trim()) {
       // Shake animation for empty title
       const shake = new Animated.Value(0);
       Animated.sequence([
-        Animated.timing(shake, { toValue: 10, duration: 50, useNativeDriver: true }),
-        Animated.timing(shake, { toValue: -10, duration: 50, useNativeDriver: true }),
-        Animated.timing(shake, { toValue: 10, duration: 50, useNativeDriver: true }),
-        Animated.timing(shake, { toValue: 0, duration: 50, useNativeDriver: true }),
+        Animated.timing(shake, {
+          toValue: 10,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shake, {
+          toValue: -10,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shake, {
+          toValue: 10,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shake, {
+          toValue: 0,
+          duration: 50,
+          useNativeDriver: true,
+        }),
       ]).start();
-      
-      Alert.alert('Required', 'Please enter a title.');
-      return;
+
+      return Toast.show({
+        type: "error",
+        text1: "Required",
+        text2: "Please enter a title",
+      });
     }
     if (!price.trim()) {
-      Alert.alert('Required', 'Please enter a price.');
-      return;
+      return Toast.show({
+        type: "error",
+        text1: "Required",
+        text2: "Please enter a price",
+      });
     }
-    // if (images.length === 0) {
-    //   Alert.alert('Required', 'Please add at least one photo.');
-    //   return;
-    // }
 
     animateSubmitPress();
-    
+
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const formData = new FormData();
+      const formData = new FormData();
 
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("price", price);
-    formData.append("discountPrice",discountPrice);
-    formData.append("condition",condition);
-    formData.append("category", category);
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("price", price);
+      formData.append("discountPrice", discountPrice);
+      formData.append("condition", condition);
+      formData.append("category", category);
+      if (campus.trim()) {
+        formData.append("campus", campus);
+      }
 
-images.forEach((uri, index) => {
-  const filename = uri.split("/").pop() || `photo_${index}.jpg`;
+      images.forEach((uri, index) => {
+        const filename = uri.split("/").pop() || `photo_${index}.jpg`;
 
-  const fileUri = uri.startsWith("file://") ? uri : `file://${uri}`;
+        const fileUri = uri.startsWith("file://") ? uri : `file://${uri}`;
 
-  formData.append("images", {
-    uri: fileUri,
-    name: filename,
-    type: "image/jpeg",
-  });
-});
+        formData.append("images", {
+          uri: fileUri,
+          name: filename,
+          type: "image/jpeg",
+        });
+      });
 
-console.log("Images:", images);
-console.log("FormData created");
+      await addProduct(formData);
+      await getAllProducts();
+      console.log(formData)
 
-await addProduct(formData);
+      if (!title || !description) {
+        Toast.show({
+          type: "error",
+          text1: "Missing fields",
+        });
+        return;
+      }
 
-      
-      Alert.alert(
-        'Success!',
-        'Your item has been listed.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Reset form with animation
-              Animated.parallel([
-                Animated.timing(fadeAnim, {
-                  toValue: 0,
-                  duration: 200,
-                  useNativeDriver: true,
-                }),
-                Animated.timing(slideAnim, {
-                  toValue: 1000,
-                  duration: 300,
-                  easing: Easing.in(Easing.ease),
-                  useNativeDriver: true,
-                }),
-              ]).start(() => {
-                // Reset form data
-                setTitle('');
-                setDescription('');
-                setPrice('');
-                setDiscountPrice('');
-                setCondition('');
-                setCategory('');
-                setImages([]);
-                setLoading(false);
-                hasAnimated.current = false;
-                
-                // Navigate back
-                router.back();
-              });
-            },
-          },
-        ]
-      );
+      // then do animation + navigation
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 1000,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setTitle("");
+        setDescription("");
+        setPrice("");
+        setDiscountPrice("");
+        setCondition("");
+        setCategory("");
+        setImages([]);
+        setLoading(false);
+        hasAnimated.current = false;
+
+        router.back();
+      });
+
+      // finally show toast
+      Toast.show({
+        type: "success",
+        text1: "Product submitted",
+        text2: "We will review your listing",
+      });
     } catch (error) {
-  console.log("ADD PRODUCT ERROR:", error.response?.data || error.message);
-  Alert.alert('Error', 'Failed to list item.');
-  setLoading(false);
-}
+      console.log("ADD PRODUCT ERROR:", error.response?.data || error.message);
+
+      let message = "Something went wrong. Please try again.";
+
+      if (!error.response) {
+       // message = "Network error. Please check your internet connection.";
+        Toast.show({
+        type: "error",
+        text1: "network",
+        text2: "Network error. Please check your internet connection.",
+        })
+      } else if (error.response.status >= 500) {
+        message = "Server is currently unavailable. Please try again later.";
+      } else if (error.response.status === 400) {
+        message = error.response.data.message || "Invalid data submitted.";
+      }
+
+      Alert.alert("Error", message);
+      setLoading(false);
+    }
   };
 
   // If not visible yet, show empty container
@@ -367,18 +442,18 @@ await addProduct(formData);
       <SafeAreaView style={styles.container}>
         <View style={styles.topSection}>
           <View style={styles.topContent}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.backButton}
               onPress={() => router.back()}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
-            
+
             <View style={styles.titleContainer}>
               <Text style={styles.screenTitle}>Sell Item</Text>
               <Text style={styles.screenSubtitle}>List your item for sale</Text>
             </View>
-            
+
             <View style={styles.placeholder} />
           </View>
         </View>
@@ -391,70 +466,75 @@ await addProduct(formData);
       {/* Top Blue Section (20%) */}
       <View style={styles.topSection}>
         <View style={styles.topContent}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={animateBackPress}
           >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          
+
           <View style={styles.titleContainer}>
             <Text style={styles.screenTitle}>Sell Item</Text>
             <Text style={styles.screenSubtitle}>List your item for sale</Text>
           </View>
-          
+
           <View style={styles.placeholder} />
         </View>
       </View>
 
       {/* Bottom White Section (80%) with curved top - Animated */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.bottomSection,
           {
             transform: [{ translateY: slideAnim }],
-          }
+          },
         ]}
       >
-        <Animated.ScrollView 
+        <KeyboardAvoidingView   behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  style={{ flex: 1 }} // Add this
+  keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
+
+        <Animated.ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
-         
-               contentContainerStyle={[
+          contentContainerStyle={[
             styles.scrollContent,
             {
               paddingBottom: tabBarHeight + insets.bottom + 24,
             },
-            ]}
+          ]}
           scrollEventThrottle={16}
         >
-          <Animated.View 
+          <Animated.View
             style={{
               opacity: fadeAnim,
               transform: [{ scale: scaleAnim }],
             }}
           >
             {/* Image Upload Section */}
-          <View style={styles.imageSection}>
+            <View style={styles.imageSection}>
               <Text style={styles.sectionLabel}>Add Photos *</Text>
               <Text style={styles.sectionHint}>Add up to 4 clear photos</Text>
-              
+
               <View style={styles.imageGrid}>
-       
                 {images.map((uri, index) => (
-                  <Animated.View 
-                    key={`${uri}-${index}`} 
+                  <Animated.View
+                    key={`${uri}-${index}`}
                     style={[
                       styles.imageCell,
                       {
-                        transform: [{ 
-                          scale: imageScaleAnims[index] || new Animated.Value(1) 
-                        }]
-                      }
+                        transform: [
+                          {
+                            scale:
+                              imageScaleAnims[index] || new Animated.Value(1),
+                          },
+                        ],
+                      },
                     ]}
                   >
                     <Image source={{ uri }} style={styles.previewImage} />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.removeBtn}
                       onPress={() => removeImage(index)}
                     >
@@ -462,8 +542,7 @@ await addProduct(formData);
                     </TouchableOpacity>
                   </Animated.View>
                 ))}
-                
-            
+
                 {images.length < 4 && (
                   <Animated.View
                     style={{
@@ -471,7 +550,7 @@ await addProduct(formData);
                       transform: [{ scale: scaleAnim }],
                     }}
                   >
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.addImageCell}
                       onPress={pickImage}
                       activeOpacity={0.7}
@@ -536,29 +615,22 @@ await addProduct(formData);
 
             {/* Condition */}
             <View style={styles.inputSection}>
-
-
-       
-            <SelectableChips
-            label="Condition"
-            options={conditionOptions}
-            selectedValue={condition}
-            onSelect={setCondition}
-            type="radio"
-            layout="horizontal"
-            size="sm"
-            chipStyle="pill"
-            required
-      />
-
-  
-     
-
+              <SelectableChips
+                label="Condition"
+                options={conditionOptions}
+                selectedValue={condition}
+                onSelect={setCondition}
+                type="radio"
+                layout="horizontal"
+                size="sm"
+                chipStyle="pill"
+                required
+              />
             </View>
 
-                {/* discountPrice */}
-             <View style={styles.inputSection}>
-              <Text style={styles.sectionLabel}>Discount Price *</Text>
+            {/* discountPrice */}
+            <View style={styles.inputSection}>
+              <Text style={styles.sectionLabel}>Discount Price </Text>
               <View style={styles.priceContainer}>
                 <View style={styles.pricePrefix}>
                   <Text style={styles.currencySymbol}>₵</Text>
@@ -582,27 +654,32 @@ await addProduct(formData);
                   <Animated.View
                     key={cat.id}
                     style={{
-                      transform: [{ 
-                        scale: imageScaleAnims[index] || new Animated.Value(1) 
-                      }]
+                      transform: [
+                        {
+                          scale:
+                            imageScaleAnims[index] || new Animated.Value(1),
+                        },
+                      ],
                     }}
                   >
                     <TouchableOpacity
                       style={[
                         styles.categoryButton,
-                        category === cat.id && styles.categoryButtonActive
+                        category === cat.id && styles.categoryButtonActive,
                       ]}
                       onPress={() => animateCategorySelect(cat.id)}
                     >
-                      <Ionicons 
-                        name={cat.icon} 
-                        size={20} 
-                        color={category === cat.id ? '#FFFFFF' : '#00BFFF'} 
+                      <Ionicons
+                        name={cat.icon}
+                        size={20}
+                        color={category === cat.id ? "#FFFFFF" : "#00BFFF"}
                       />
-                      <Text style={[
-                        styles.categoryText,
-                        category === cat.id && styles.categoryTextActive
-                      ]}>
+                      <Text
+                        style={[
+                          styles.categoryText,
+                          category === cat.id && styles.categoryTextActive,
+                        ]}
+                      >
                         {cat.name}
                       </Text>
                     </TouchableOpacity>
@@ -615,28 +692,31 @@ await addProduct(formData);
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                (!title || !price || !category) && styles.submitButtonDisabled
+                (!title || !price || !category) && styles.submitButtonDisabled,
               ]}
               onPress={handleSubmit}
-              disabled={loading || !title || !price  || !category}
+              disabled={loading || !title || !price || !category}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                  <Text style={styles.submitButtonText}>List Item for Sale</Text>
+                  <Text style={styles.submitButtonText}>
+                    List Item for Sale
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
 
             {/* Info Text */}
             <Text style={styles.infoText}>
-              Your listing will be visible to other students on campus. 
-              Make sure to provide accurate information.
+              Your listing will be visible to other students on campus. Make
+              sure to provide accurate information.
             </Text>
           </Animated.View>
         </Animated.ScrollView>
+        </KeyboardAvoidingView>
       </Animated.View>
     </View>
   );
@@ -646,51 +726,51 @@ await addProduct(formData);
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#00BFFF',
+    backgroundColor: "#00BFFF",
   },
   topSection: {
-    height: '20%',
-    backgroundColor: '#00BFFF',
+    height: "20%",
+    backgroundColor: "#00BFFF",
     paddingTop: 40,
   },
   topContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    height: '100%',
+    height: "100%",
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   titleContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   screenTitle: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
     marginBottom: 4,
   },
   screenSubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: "rgba(255, 255, 255, 0.9)",
   },
   placeholder: {
     width: 40,
   },
   bottomSection: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   scrollView: {
     flex: 1,
@@ -704,37 +784,37 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2D3748',
+    fontWeight: "600",
+    color: "#2D3748",
     marginBottom: 6,
   },
   sectionHint: {
     fontSize: 13,
-    color: '#718096',
+    color: "#718096",
     marginBottom: 16,
   },
   imageGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   imageCell: {
     width: (width - 72) / 3, // 3 per row with padding
     height: (width - 72) / 3,
     borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#F7FAFC',
-    position: 'relative',
+    overflow: "hidden",
+    backgroundColor: "#F7FAFC",
+    position: "relative",
   },
   previewImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   removeBtn: {
-    position: 'absolute',
+    position: "absolute",
     top: -6,
     right: -6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
   },
   addImageCell: {
@@ -742,124 +822,124 @@ const styles = StyleSheet.create({
     height: (width - 72) / 3,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#E2E8F0',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#E2E8F0",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
   },
   addImageContent: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   addImageText: {
     fontSize: 12,
-    color: '#00BFFF',
+    color: "#00BFFF",
     marginTop: 8,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   inputSection: {
     marginBottom: 24,
   },
   input: {
-    backgroundColor: '#F7FAFC',
+    backgroundColor: "#F7FAFC",
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#2D3748',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    color: "#2D3748",
+    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
   },
   textArea: {
     minHeight: 80,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   charCount: {
     fontSize: 12,
-    color: '#A0AEC0',
-    textAlign: 'right',
+    color: "#A0AEC0",
+    textAlign: "right",
     marginTop: 4,
   },
   priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7FAFC',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F7FAFC",
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   pricePrefix: {
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: '#EDF2F7',
+    backgroundColor: "#EDF2F7",
     borderRightWidth: 1,
-    borderRightColor: '#E2E8F0',
+    borderRightColor: "#E2E8F0",
   },
   currencySymbol: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#00BFFF',
+    fontWeight: "700",
+    color: "#00BFFF",
   },
   priceInput: {
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#2D3748',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    color: "#2D3748",
+    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
   },
   categoryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   categoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#00BFFF',
-    backgroundColor: 'transparent',
+    borderColor: "#00BFFF",
+    backgroundColor: "transparent",
   },
   categoryButtonActive: {
-    backgroundColor: '#00BFFF',
+    backgroundColor: "#00BFFF",
   },
   categoryText: {
     fontSize: 14,
-    color: '#00BFFF',
-    fontWeight: '500',
+    color: "#00BFFF",
+    fontWeight: "500",
     marginLeft: 6,
   },
   categoryTextActive: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00BFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#00BFFF",
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 8,
     marginBottom: 16,
   },
   submitButtonDisabled: {
-    backgroundColor: '#CBD5E0',
+    backgroundColor: "#CBD5E0",
     opacity: 0.7,
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 8,
   },
   infoText: {
     fontSize: 12,
-    color: '#718096',
-    textAlign: 'center',
+    color: "#718096",
+    textAlign: "center",
     lineHeight: 16,
   },
 });

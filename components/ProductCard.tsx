@@ -16,6 +16,13 @@ const ProductCard = ({ product, onPress }) => {
     setImageViewerVisible(true);
   };
 
+  const discountPercentage =
+  product.discountPrice && product.price
+    ? Math.round(
+        ((product.discountPrice - product.price) / product.discountPrice) * 100
+      )
+    : null;
+
   return (
     <TouchableOpacity 
       style={styles.container}
@@ -66,12 +73,23 @@ const ProductCard = ({ product, onPress }) => {
         </Text>
 
         {/* Price Row */}
-        <View style={styles.priceRow}>
-          <Text style={styles.price}>₵ {product.price}</Text>
-          {product.discountPrice && (
-            <Text style={styles.originalPrice}>₵ {product.discountPrice}</Text>
-          )}
-        </View>
+     <View style={styles.priceRow}>
+  <Text style={styles.price}>₵ {product.price}</Text>
+
+  {product.discountPrice && (
+    <>
+      <Text style={styles.originalPrice}>
+        ₵ {product.discountPrice}
+      </Text>
+
+      {discountPercentage > 0 && (
+        <Text style={styles.savingsText}>
+          Save {discountPercentage}%
+        </Text>
+      )}
+    </>
+  )}
+</View>
 
         {/* Condition Badge */}
         {product.condition && (
@@ -91,8 +109,8 @@ const ProductCard = ({ product, onPress }) => {
             </Text>
           </View>
           <View style={styles.rating}>
-            <Ionicons name="star" size={12} color="#F6AD55" />
-            <Text style={styles.ratingText}>{product.rating || 0}</Text>
+            {/* <Ionicons name="star" size={12} color="#F6AD55" />
+            <Text style={styles.ratingText}>{product.rating || 0}</Text> */}
           </View>
         </View>
       </View>
@@ -112,7 +130,7 @@ const styles = StyleSheet.create({
   container: {
     width: '48%',
     backgroundColor: '#FFF',
-    borderRadius: 10,
+    borderRadius: 5,
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1,
@@ -232,6 +250,12 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '600',
   },
+  savingsText: {
+  fontSize: 11,
+  color: '#38A169',
+  fontWeight: '700',
+  marginLeft: 6,
+},
 });
 
 export default ProductCard;

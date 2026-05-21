@@ -17,7 +17,8 @@ export const signupSchema = z.object({
   fullName: z.string().trim().min(6, "Fullname must be 6 characters and above"),
   email: z.string().trim().toLowerCase().email(),
 
-  studentID: z.string().regex(/^\d{8}$/, "Student ID must be exactly 8 digits"),
+  studentID: z.string().regex(/^[a-zA-Z0-9]+$/, "Student ID must contain only letters and numbers"),
+
   phoneNumber: z.string().regex(/^\d{10}$/, "Phone number is invalid"),
 
   password: z

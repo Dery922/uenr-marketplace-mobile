@@ -1,4 +1,3 @@
-// app/my-listings/index.tsx
 import { deleteProduct, getMyProducts } from "@/api/productApi";
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -130,7 +129,7 @@ const MyListingsScreen = () => {
   // const handleDelete = (itemId: string) => {
   //   setItemToDelete(itemId);
   //   setIsDeleteModalVisible(true);
-  // };
+  // }; 
 
 const handleDelete = async (itemId: string) => {
   try {
@@ -203,23 +202,7 @@ const handleDelete = async (itemId: string) => {
           <Ionicons name="create-outline" size={22} color="#FFFFFF" />
           <Text style={styles.swipeButtonText}>Edit</Text>
         </RectButton>
-        
-        {/* <RectButton
-          style={[styles.swipeButton, { backgroundColor: '#38A169' }]}
-          onPress={() => handleDuplicate(item)}
-        >
-          <Ionicons name="copy-outline" size={22} color="#FFFFFF" />
-          <Text style={styles.swipeButtonText}>Duplicate</Text>
-        </RectButton> */}
-{/*         
-        <RectButton
-          style={[styles.swipeButton, { backgroundColor: '#D69E2E' }]}
-          onPress={() => handleViewStats(item)}
-        >
-          <Ionicons name="stats-chart-outline" size={22} color="#FFFFFF" />
-          <Text style={styles.swipeButtonText}>Stats</Text>
-        </RectButton> */}
-        
+ 
         <RectButton
           style={[styles.swipeButton, { backgroundColor: '#E53E3E' }]}
           onPress={() => handleDelete(item.id)}
@@ -350,7 +333,7 @@ useEffect(() => {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={24} color="#2D3748" />
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View>
             <Text style={styles.headerTitle}>My Listings</Text>
@@ -571,7 +554,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#00BFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
@@ -579,7 +562,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F7FAFC',
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: 'center',
     alignItems: 'center',
   },
